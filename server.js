@@ -5,8 +5,8 @@ const PORT = process.env.PORT || 3000;
 
 // Lista de URLs de videos originales
 const videoUrls = [
-    "https://originalserver.com/embed/video1",
-    "https://originalserver.com/embed/video2"
+    "https://ok.ru/videoembed/9858135820851",
+    "https://ok.ru/videoembed/9858135820851"
 ];
 
 // Almacén temporal de enlaces generados
