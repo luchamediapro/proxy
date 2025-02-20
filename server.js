@@ -1,44 +1,59 @@
-const express = require("express");
-const path = require("path");
+const express = require('express');
+const crypto = require('crypto');
 const app = express();
-const PORT = process.env.PORT || 3000;
+const port = process.env.PORT || 3000;
 
-const tempLinks = {}; // Simulación de enlaces temporales de video
-
-// Función para generar el token de video
-function generateToken(ip) {
-    const token = Math.random().toString(36).substr(2, 9); // Generar un token aleatorio
-    const expiresAt = Date.now() + 5 * 60 * 1000; // Expiración del enlace en 5 minutos
-    tempLinks[token] = {
-        url: "https://ok.ru/videoembed/9858135820851", // URL del video real
-        expiresAt,
-    };
-    return token;
+// Función para generar un token único
+function generateToken() {
+    return crypto.randomBytes(16).toString('hex');
 }
 
-// Ruta para obtener el enlace del video con el token
-app.get("/get-video", (req, res) => {
-    const userIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
-    const token = generateToken(userIp);
-    const videoUrl = `https://ip-01dt.onrender.com/watch/${token}`; // Enlace con token
-    res.json({ embedUrl: videoUrl }); // Devuelve la URL con el token al frontend
+// Ruta para servir el contenido con el iframe
+app.get('/', (req, res) => {
+    // Generar un token para el video
+    const token = generateToken();
+
+    // URL del video con el token (esto es solo un ejemplo)
+    const videoUrl = `https://ok.ru/videoembed/9858135820851/${token}`;
+
+    // HTML con el iframe que carga el video
+    const html = `
+        <!DOCTYPE html>
+        <html lang="es">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <title>Reproductor de Video</title>
+            <style>
+                body {
+                    font-family: Arial, sans-serif;
+                    text-align: center;
+                }
+                iframe {
+                    width: 80%;
+                    height: 500px;
+                    border: none;
+                    border-radius: 10px;
+                    margin-top: 20px;
+                }
+            </style>
+        </head>
+        <body>
+            <h1>Reproductor de Video</h1>
+
+            <!-- Contenedor del iframe -->
+            <div id="video-container">
+                <iframe src="${videoUrl}" frameborder="0"></iframe>
+            </div>
+        </body>
+        </html>
+    `;
+
+    // Responder con el HTML generado
+    res.send(html);
 });
 
-// Ruta para ver el video real
-app.get("/watch/:token", (req, res) => {
-    const token = req.params.token;
-    const linkData = tempLinks[token];
-
-    if (!linkData || Date.now() > linkData.expiresAt) {
-        return res.status(403).send("❌ Enlace expirado.");
-    }
-
-    res.redirect(linkData.url); // Redirige al video real
-});
-
-// Servir archivos estáticos (index.html)
-app.use(express.static(path.join(__dirname, 'public')));
-
-app.listen(PORT, () => {
-    console.log(`Servidor corriendo en http://localhost:${PORT}`);
+// Iniciar el servidor
+app.listen(port, () => {
+    console.log(`Servidor corriendo en http://localhost:${port}`);
 });
