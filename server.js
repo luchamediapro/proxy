@@ -3,31 +3,28 @@ const path = require("path");
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Simulación de los videos con tokens (puedes adaptarlo a tu base de datos o lógica)
-const tempLinks = {};
+const tempLinks = {}; // Simulación de enlaces temporales de video
 
-// Función para generar el token basado en la IP del usuario
+// Función para generar el token de video
 function generateToken(ip) {
-    const token = Math.random().toString(36).substr(2, 9); // Simulación de token
-    const expiresAt = Date.now() + 5 * 60 * 1000; // Expiración en 5 minutos
+    const token = Math.random().toString(36).substr(2, 9); // Generar un token aleatorio
+    const expiresAt = Date.now() + 5 * 60 * 1000; // Expiración del enlace en 5 minutos
     tempLinks[token] = {
-        url: "https://ok.ru/videoembed/9858135820851", // Aquí pones tu enlace real
+        url: "https://ok.ru/videoembed/9858135820851", // URL del video real
         expiresAt,
     };
     return token;
 }
 
-// Ruta para servir el archivo estático (index.html)
-app.use(express.static(path.join(__dirname, 'public')));
-
-// Endpoint para obtener un enlace temporal de video
+// Ruta para obtener el enlace del video con el token
 app.get("/get-video", (req, res) => {
     const userIp = req.headers["x-forwarded-for"] || req.connection.remoteAddress;
     const token = generateToken(userIp);
-    res.json({ embedUrl: `https://ip-01dt.onrender.com/watch/${token}` }); // Usando la URL de Render
+    const videoUrl = `https://ip-01dt.onrender.com/watch/${token}`; // Enlace con token
+    res.json({ embedUrl: videoUrl }); // Devuelve la URL con el token al frontend
 });
 
-// Endpoint para servir el video con validación del token
+// Ruta para ver el video real
 app.get("/watch/:token", (req, res) => {
     const token = req.params.token;
     const linkData = tempLinks[token];
@@ -39,7 +36,9 @@ app.get("/watch/:token", (req, res) => {
     res.redirect(linkData.url); // Redirige al video real
 });
 
-// Iniciar servidor
+// Servir archivos estáticos (index.html)
+app.use(express.static(path.join(__dirname, 'public')));
+
 app.listen(PORT, () => {
-    console.log(`Servidor corriendo en ${process.env.PORT || 'http://localhost:3000'}`);
+    console.log(`Servidor corriendo en http://localhost:${PORT}`);
 });
