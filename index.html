@@ -32,7 +32,7 @@
             try {
                 const response = await fetch('https://ip-01dt.onrender.com/get-video');
                 const data = await response.json();
-                
+
                 // Asigna la URL del video al iframe
                 const iframe = document.getElementById('video-iframe');
                 iframe.src = data.embedUrl;  // Inserta la URL generada con el token
@@ -46,3 +46,4 @@
     </script>
 </body>
 </html>
+
