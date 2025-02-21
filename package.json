@@ -1,7 +1,7 @@
 {
-  "name": "servidor-videos",
+  "name": "proxy",
   "version": "1.0.0",
-  "description": "Servidor para servir videos con URLs dinámicas y expiración",
+  "description": "Servidor de videos con URLs dinámicas",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
