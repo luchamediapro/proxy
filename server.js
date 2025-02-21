@@ -1,59 +1,52 @@
 const express = require('express');
-const crypto = require('crypto');
+const { v4: uuidv4 } = require('uuid');
+const redis = require('redis');
+
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
-// Función para generar un token único
-function generateToken() {
-    return crypto.randomBytes(16).toString('hex');
-}
+// Conexión a Redis (para almacenar URLs temporales)
+const client = redis.createClient();
 
-// Ruta para servir el contenido con el iframe
-app.get('/', (req, res) => {
-    // Generar un token para el video
-    const token = generateToken();
-
-    // URL del video con el token (esto es solo un ejemplo)
-    const videoUrl = `https://ok.ru/videoembed/9858135820851/${token}`;
-
-    // HTML con el iframe que carga el video
-    const html = `
-        <!DOCTYPE html>
-        <html lang="es">
-        <head>
-            <meta charset="UTF-8">
-            <meta name="viewport" content="width=device-width, initial-scale=1.0">
-            <title>Reproductor de Video</title>
-            <style>
-                body {
-                    font-family: Arial, sans-serif;
-                    text-align: center;
-                }
-                iframe {
-                    width: 80%;
-                    height: 500px;
-                    border: none;
-                    border-radius: 10px;
-                    margin-top: 20px;
-                }
-            </style>
-        </head>
-        <body>
-            <h1>Reproductor de Video</h1>
-
-            <!-- Contenedor del iframe -->
-            <div id="video-container">
-                <iframe src="${videoUrl}" frameborder="0"></iframe>
-            </div>
-        </body>
-        </html>
-    `;
-
-    // Responder con el HTML generado
-    res.send(html);
+client.on('error', (err) => {
+    console.error('Error de Redis:', err);
 });
 
-// Iniciar el servidor
+// Middleware para verificar URLs dinámicas
+const checkURL = (req, res, next) => {
+    const { id } = req.params;
+    client.get(id, (err, data) => {
+        if (err) throw err;
+        if (!data) {
+            return res.status(404).send('URL no válida o expirada');
+        }
+        const { ip, videoPath } = JSON.parse(data);
+        if (ip !== req.ip) {
+            return res.status(403).send('Acceso denegado');
+        }
+        req.videoPath = videoPath;
+        next();
+    });
+};
+
+// Ruta para generar una URL dinámica
+app.get('/generate-url', (req, res) => {
+    const videoPath = 'ruta/al/video.mp4'; // Cambia esto por la ruta real del video
+    const id = uuidv4();
+    const ip = req.ip;
+    const expirationTime = 60 * 10; // 10 minutos de expiración
+
+    client.setex(id, expirationTime, JSON.stringify({ ip, videoPath }));
+    const dynamicURL = `http://${req.headers.host}/video/${id}`;
+    res.send({ url: dynamicURL });
+});
+
+// Ruta para servir el video
+app.get('/video/:id', checkURL, (req, res) => {
+    const videoPath = req.videoPath;
+    res.sendFile(videoPath, { root: __dirname });
+});
+
 app.listen(port, () => {
     console.log(`Servidor corriendo en http://localhost:${port}`);
 });
