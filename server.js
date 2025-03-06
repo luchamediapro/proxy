@@ -1,60 +1,34 @@
-const express = require('express');
-const { v4: uuidv4 } = require('uuid');
-const redis = require('redis');
+const express = require("express");
+const puppeteer = require("puppeteer");
 
 const app = express();
-const port = process.env.PORT || 3000;
 
-// Conexión a Redis
-const client = redis.createClient();
+app.get("/proxy", async (req, res) => {
+    const url = "https://teleclub.xyz/activar"; 
 
-client.on('error', (err) => {
-    console.error('Error de Redis:', err);
+    try {
+        const browser = await puppeteer.launch({
+            headless: "new",
+            args: ["--no-sandbox", "--disable-setuid-sandbox"]
+        });
+
+        const page = await browser.newPage();
+        await page.goto(url, { waitUntil: "networkidle2" });
+
+        await page.waitForSelector("button", { timeout: 5000 });
+
+        const botonHTML = await page.evaluate(() => {
+            const boton = Array.from(document.querySelectorAll("button"))
+                .find(b => b.innerText.includes("¡Activar Ahora!"));
+            return boton ? boton.outerHTML : "Botón no encontrado";
+        });
+
+        await browser.close();
+        res.send(botonHTML);
+
+    } catch (error) {
+        res.status(500).send("Error cargando el botón.");
+    }
 });
 
-// Middleware para verificar URLs dinámicas
-const checkURL = (req, res, next) => {
-    const { id } = req.params;
-    client.get(id, (err, data) => {
-        if (err) {
-            console.error('Error al obtener datos de Redis:', err);
-            return res.status(500).send('Error interno del servidor');
-        }
-        if (!data) {
-            return res.status(404).send('URL no válida o expirada');
-        }
-        const { ip, videoPath } = JSON.parse(data);
-        if (ip !== req.ip) {
-            return res.status(403).send('Acceso denegado');
-        }
-        req.videoPath = videoPath;
-        next();
-    });
-};
-
-// Ruta para generar una URL dinámica
-app.get('/generate-url', (req, res) => {
-    const videoPath = 'ruta/al/video.mp4'; // Cambia esto por la ruta real del video
-    const id = uuidv4();
-    const ip = req.ip;
-    const expirationTime = 60 * 10; // 10 minutos
-
-    client.setex(id, expirationTime, JSON.stringify({ ip, videoPath }), (err) => {
-        if (err) {
-            console.error('Error al guardar en Redis:', err);
-            return res.status(500).send('Error interno del servidor');
-        }
-        const dynamicURL = `http://${req.headers.host}/video/${id}`;
-        res.send({ url: dynamicURL });
-    });
-});
-
-// Ruta para servir el video
-app.get('/video/:id', checkURL, (req, res) => {
-    const videoPath = req.videoPath;
-    res.sendFile(videoPath, { root: __dirname });
-});
-
-app.listen(port, () => {
-    console.log(`Servidor corriendo en http://localhost:${port}`);
-});
+app.listen(3000, () => console.log("Proxy corriendo en http://localhost:3000"));
