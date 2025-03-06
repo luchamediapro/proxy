@@ -1,10 +1,5 @@
-const express = require("express");
-const puppeteer = require("puppeteer");
-
-const app = express();
-
 app.get("/proxy", async (req, res) => {
-    const url = "https://teleclub.xyz/activar"; 
+    const url = "https://teleclub.xyz/activar"; // URL de la página
 
     try {
         const browser = await puppeteer.launch({
@@ -15,6 +10,7 @@ app.get("/proxy", async (req, res) => {
         const page = await browser.newPage();
         await page.goto(url, { waitUntil: "networkidle2" });
 
+        // Espera el botón "¡Activar Ahora!" para extraerlo
         await page.waitForSelector("button", { timeout: 5000 });
 
         const botonHTML = await page.evaluate(() => {
@@ -30,5 +26,3 @@ app.get("/proxy", async (req, res) => {
         res.status(500).send("Error cargando el botón.");
     }
 });
-
-app.listen(3000, () => console.log("Proxy corriendo en http://localhost:3000"));
